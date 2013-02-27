@@ -1,4 +1,4 @@
-(ns flatland.casette
+(ns flatland.cassette
   (:require [gloss.core :refer [compile-frame finite-frame]]
             [gloss.core.protocols :refer [write-bytes]]
             [gloss.io :refer [lazy-decode-all encode]]
