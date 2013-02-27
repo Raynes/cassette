@@ -24,7 +24,7 @@
        buffer)))
 
 (defn read-messages
-  ([frame buffer] (read-messages frame buffer 0))
+  ([frame buffer] (read-messages frame buffer (.position buffer)))
   ([frame buffer offset]
      (let [codec (compile-frame (message-codec frame))]
        (.position buffer offset)
