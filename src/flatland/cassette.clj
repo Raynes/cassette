@@ -25,8 +25,8 @@
             0)))
 
 (defn roll-over
-  "Rolls over to a new file (or starts a new topic). Closes
-   the previous memory mapped file (if there was one)."
+  "Rolls over to a new file (or begins the topic if no files exist).
+   Closes the previous memory mapped file (if there was one)."
   [top]
   (let [{:keys [path size current]} top
         pos (when-let [buffer (get-in current [:handle :buffer])]
