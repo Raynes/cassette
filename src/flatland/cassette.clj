@@ -42,13 +42,21 @@
     (assoc topic :current {:handle handle
                            :name name})))
 
-#_(defn append-message!
-  [frame topic value]
-  (let [encoded (encode (compile-frame (message-codec frame)) value)]
-    (if (space? (:current topic) encoded)
-      (doseq [buf encoded]
-        (.put buffer buf))
-      (recur (roll-over topic)))))
+(defn get-buffer
+  "Pull the raw memory mapped buffer out of a topic."
+  [topic]
+  (get-in topic [:current :handle :buffer]))
+
+(defn append-message!
+  "Append a message to the topic."
+  [topic frame value]
+  (let [encoded (encode (message-codec frame) value)
+        topic (if (space? (get-buffer topic) encoded)
+                topic
+                (roll-over topic))]
+    (doseq [buf encoded]
+      (.put (get-buffer topic) buf))
+    topic))
 
 (defn read-messages
   ([frame buffer] (read-messages frame buffer (.position buffer)))
