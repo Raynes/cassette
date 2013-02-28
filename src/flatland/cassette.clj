@@ -4,11 +4,9 @@
             [gloss.io :refer [lazy-decode-all encode]]
             [flatland.useful.map :refer [keyed]]
             [flatland.useful.io :refer [mmap-file]]
-            [me.raynes.fs :as fs])
+            [me.raynes.fs :as fs]
+            [flatland.cassette.codec :refer [message-codec]])
   (:import [java.io RandomAccessFile]))
-
-(defn message-codec [codec]
-  (finite-frame :int32 codec))
 
 (defn grow-file [^RandomAccessFile file size]
   ;; Should create a sparse file on Linux and Windows, but apparently not OS X (HFS+).
@@ -23,29 +21,33 @@
        (sort)))
 
 (defn space? [buf buf-seq]
-  (> (- (.capacity buf) (.position buf))
+  (>= (- (.capacity buf) (.position buf))
      (byte-count buf-seq)))
 
 (defn compute-file-name 
-  [old size] 
-  (if old
-    (str (+ (Long. (fs/name old)) size) ".kafka")
-    "00000000000.kafka"))
+  [byte-offset name]
+  (format "%011d.kafka"
+          (if name
+            (+ (Long/parseLong (fs/name name))
+               byte-offset)
+            0)))
 
 (defn roll-over
   "Rolls over to a new file (or starts a new topic). Closes
    the previous memory mapped file (if there was one)."
   [top]
   (let [{:keys [path size current]} top
-        name (compute-file-name (:name current) size)
-        buffer (mmap-file
+        pos (when-let [buffer (get-in current [:handle :buffer])]
+              (.position buffer))
+        name (compute-file-name pos (:name current))
+        handle (mmap-file
                 (doto (RandomAccessFile.
                        (fs/file path name)
                        "rw")
                   (grow-file size)))]
-    (when-let [closer (get-in current [:buffer :close])]
+    (when-let [closer (get-in current [:handle :close])]
       (closer))
-    (assoc top :current {:buffer buffer
+    (assoc top :current {:handle handle
                          :name name})))
 
 #_(defn append-message!
