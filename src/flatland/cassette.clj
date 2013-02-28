@@ -26,8 +26,6 @@
   (> (- (.capacity buf) (.position buf))
      (byte-count buf-seq)))
 
-(defn create-topic-file [name])
-
 (defn compute-file-name 
   [old size] 
   (if old
