@@ -27,8 +27,8 @@
 (defn roll-over
   "Rolls over to a new file (or begins the topic if no files exist).
    Closes the previous memory mapped file (if there was one)."
-  [top]
-  (let [{:keys [path size current]} top
+  [topic]
+  (let [{:keys [path size current]} topic
         pos (when-let [buffer (get-in current [:handle :buffer])]
               (.position buffer))
         name (compute-file-name pos (:name current))
@@ -39,8 +39,8 @@
                   (grow-file size)))]
     (when-let [closer (get-in current [:handle :close])]
       (closer))
-    (assoc top :current {:handle handle
-                         :name name})))
+    (assoc topic :current {:handle handle
+                           :name name})))
 
 #_(defn append-message!
   [frame topic value]
