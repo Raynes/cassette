@@ -12,14 +12,6 @@
   ;; Should create a sparse file on Linux and Windows, but apparently not OS X (HFS+).
   (.setLength file size))
 
-(defn sort-topic
-  "Sort all of the files in a topic."
-  [path topic]
-  (->> (fs/file path topic)
-       (fs/list-dir)
-       (filter fs/file?)
-       (sort)))
-
 (defn space? [buf buf-seq]
   (>= (- (.capacity buf) (.position buf))
      (byte-count buf-seq)))
