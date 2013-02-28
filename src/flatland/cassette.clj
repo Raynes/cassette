@@ -20,7 +20,7 @@
      (let [encoded (encode (compile-frame (message-codec frame)) value)]
        (.position buffer offset)
        (doseq [buf encoded]
-         (.put buffer (.array buf)))
+         (.put buffer buf))
        buffer)))
 
 (defn read-messages
