@@ -1,42 +1,41 @@
 (ns flatland.cassette.codec
-  (:require [gloss.core.protocols :refer [Reader Writer]]
-            [gloss.core :refer [finite-block finite-frame defcodec]]
-            [gloss.io :refer [encode decode]]
-            [gloss.data.bytes.core :refer [duplicate take-bytes drop-bytes create-buf-seq]]
-            [gloss.core.formats :only [to-buf-seq]])
-  (:import java.util.zip.CRC32))
+  (:require [gloss.core :as gloss :refer [compile-frame finite-frame]]
+            [gloss.io :as io]
+            [gloss.core.codecs :as codecs])
+  (:import java.util.zip.CRC32
+           (java.nio ByteBuffer)))
 
-(defn message-codec [codec]
-  (finite-frame :int32 [:byte :uint32 codec]))
-
-(defn len [buf]
+(defn len [^ByteBuffer buf]
   (- (.limit buf) (.position buf)))
 
 (defn compute-crc [buf-seq]
   (let [crc (CRC32.)]
-    (doseq [buf buf-seq]
+    (doseq [^ByteBuffer buf buf-seq]
       (let [arr (byte-array (len buf))]
-        (.get (duplicate buf) arr (.position buf) (.limit buf))
+        (.get (.duplicate buf) arr (.position buf) (.limit buf))
         (.update crc arr)))
     (.getValue crc)))
 
-(defcodec crc :uint32)
+(defn wrap-crc [codec]
+  (compile-frame [:uint32 codecs/identity-codec]
+                 (fn add [val]
+                   (let [encoded (io/encode codec val)]
+                     [(compute-crc encoded) encoded]))
+                 (fn check [[crc bytes]]
+                   (if (= crc (compute-crc bytes))
+                     (io/decode codec bytes)
+                     (throw (IllegalArgumentException.
+                             (format "CRC %l does not match: expected %l"
+                                     crc, (compute-crc bytes))))))))
 
-(def prefix-length 4) ;; 4 bytes of "how long is the rest of the message"
-(def magic-length 1) ;; 1 byte of some magic number
-(def crc-length 4) ;; 4 bytes of CRC
-(def header-length (+ prefix-length magic-length crc-length))
-
-(defn get-crc [buf-seq]
-  (decode crc (-> (create-buf-seq buf-seq)
-                  (take-bytes header-length)
-                  (drop-bytes (+ prefix-length magic-length)))))
-
-(defn get-body [buf-seq]
-  (-> (create-buf-seq buf-seq)
-      (drop-bytes buf-seq header-length)))
-
-(defn compare-crc [buf-seq]
-  (let [buf-seq (create-buf-seq buf-seq)]
-    (= (get-crc buf-seq)
-       (-> buf-seq get-body compute-crc))))
+(let [magic-byte (byte 0)]
+  (defn message-codec [codec]
+    (compile-frame (finite-frame :uint32 [:byte (wrap-crc codec)])
+                   (fn add [val]
+                     [magic-byte val])
+                   (fn check [[magic val]]
+                     (if (= magic magic-byte)
+                       val
+                       (throw (IllegalArgumentException.
+                               (format "Magic byte %d does not match: expected %d"
+                                       magic magic-byte))))))))
