@@ -13,7 +13,7 @@
   ;; Should create a sparse file on Linux and Windows, but apparently not OS X (HFS+).
   (.setLength file size))
 
-(defn ^:private write-message!
+(defn write-message!
   ([frame buffer value]
      (write-message! frame buffer (.position buffer) value))
   ([frame buffer offset value]
