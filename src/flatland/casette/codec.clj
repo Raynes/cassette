@@ -22,13 +22,19 @@
 
 (defcodec crc :uint32)
 
+(def prefix-length 4) ;; 4 bytes of "how long is the rest of the message"
+(def magic-length 1) ;; 1 byte of some magic number
+(def crc-length 4) ;; 4 bytes of CRC
+(def header-length (+ prefix-length magic-length crc-length))
+
 (defn get-crc [buf-seq]
-  (let [buf-seq (create-buf-seq buf-seq)]
-    (decode crc (drop-bytes (take-bytes buf-seq 9) 5))))
+  (decode crc (-> (create-buf-seq buf-seq)
+                  (take-bytes header-length)
+                  (drop-bytes (+ prefix-length magic-length)))))
 
 (defn get-body [buf-seq]
-  (let [buf-seq (create-buf-seq buf-seq)]
-    (drop-bytes buf-seq 9)))
+  (-> (create-buf-seq buf-seq)
+      (drop-bytes buf-seq header-length)))
 
 (defn compare-crc [buf-seq]
   (let [buf-seq (create-buf-seq buf-seq)]
