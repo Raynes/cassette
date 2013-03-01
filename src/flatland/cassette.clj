@@ -6,7 +6,7 @@
             [flatland.useful.io :refer [mmap-file]]
             [me.raynes.fs :as fs]
             [flatland.cassette.util :refer [kafka-file]]
-            [flatland.cassette.codec :refer [message-codec]])
+            [flatland.cassette.codec :as codec])
   (:import [java.io RandomAccessFile]))
 
 (defn grow-file
@@ -33,6 +33,21 @@
         byte-offset)
      0)))
 
+(defn close
+  "Closes the file associated with a topic."
+  [topic]
+  (when-let [closer (get-in topic [:handle :close])]
+    (closer)))
+
+(defn mmap
+  "Memory map a file. If size is passed, grow the file to that size
+   first."
+  [name & [size]]
+  (let [file (RandomAccessFile. name "rw")]
+    (mmap-file (if size
+                 (doto file (grow-file size))
+                 file))))
+
 (defn roll-over
   "If the topic has an open file already, rolls over to a new file and closes
    the previous memory mapped file. If this topic has no currently open file,
@@ -42,14 +57,9 @@
         pos (when-let [buffer (:buffer handle)]
               (.position buffer))
         name (compute-file-name pos name)
-        handle (mmap-file
-                (doto (RandomAccessFile.
-                       (fs/file path name)
-                       "rw")
-                  (grow-file size)))]
-    (when-let [closer (:close handle)]
-      (closer))
-    (assoc topic :handle handle :name name)))
+        handle (mmap (fs/file path name) size)]
+    (doto (assoc topic :handle handle :name name)
+      (close))))
 
 (defn get-buffer
   "Pull the raw memory mapped buffer out of a topic."
@@ -67,6 +77,34 @@
       (.put (get-buffer topic) buf))
     topic))
 
+(defn advance-buffer!
+  "Advance the topic's buffer to after the last written message. This is
+   useful for positioning the buffer so that writes go to the end."
+  [topic]
+  (dorun (codec/read-messages topic)))
+
+(defn read-messages
+  "Returns a lazy sequence of messages in this topic's currently open buffer."
+  [topic]
+  (codec/read-messages (update-in topic [:handle :buffer] #(doto %
+                                                             (.duplicate)
+                                                             (.position 0)))))
+
+(defn open
+  "Opens an existing topic directory for writing. Path is where
+   the topics are stored and topic is the topic name itself. A
+   topic map with a pre-advanced buffer will be returned and be
+   immediately writable."
+  [path topic codec]
+  (let [topic-dir (fs/file path topic)
+        {:keys [buffer close]} (mmap (codec/kafka-file {:path topic-dir}))]
+    (doto {:path topic-dir
+           :size (.capacity buffer)
+           :handle {:buffer buffer
+                    :close close}
+           :codec (message-codec codec)}
+      (advance-buffer!))))
+
 (defn create
   "Create a new topic. path is the path where the topic will be created.
    topic is the name of the topic and the directory where the files
@@ -78,5 +116,5 @@
      (let [topic (fs/file path topic)]
        (fs/mkdirs topic)
        (roll-over {:path topic
-                   :codec (message-codec codec)
+                   :codec (codec/message-codec codec)
                    :size size}))))
