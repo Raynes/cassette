@@ -72,13 +72,6 @@
       (.put (get-buffer topic) buf))
     topic))
 
-(defn read-messages
-  ([frame buffer] (read-messages frame buffer (.position buffer)))
-  ([frame buffer offset]
-     (let [codec (compile-frame (message-codec frame))]
-       (.position buffer offset)
-       (take-while (complement nil?) (lazy-decode-all codec buffer)))))
-
 (defn create
   "Create a new topic. path is the path where the topic will be created.
    topic is the name of the topic and the directory where the files
