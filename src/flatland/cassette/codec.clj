@@ -28,9 +28,7 @@
                  (fn check [[crc bytes]]
                    (if (= crc (compute-crc bytes))
                      (io/decode codec bytes)
-                     (throw (IllegalArgumentException.
-                             (format "CRC %d does not match: expected %d"
-                                     crc, (compute-crc bytes))))))))
+                     ::invalid))))
 
 (let [magic-byte (byte 0)]
   (defn message-codec [codec]
@@ -40,9 +38,7 @@
                    (fn check [[magic val]]
                      (if (= magic magic-byte)
                        val
-                       (throw (IllegalArgumentException.
-                               (format "Magic byte %d does not match: expected %d"
-                                       magic magic-byte))))))))
+                       ::invalid)))))
 
 (defn kafka-file
   ([{:keys [path]}]
