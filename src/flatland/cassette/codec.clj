@@ -33,7 +33,7 @@
         (write-bytes ordinary-codec b v)))))
 
 (defn len [^ByteBuffer buf]
-  (- (.limit buf) (.position buf)))
+  (.remaining buf))
 
 (defn compute-crc [buf-seq]
   (let [crc (CRC32.)]
