@@ -64,7 +64,7 @@
 (defn append-message!
   "Append a message to the topic."
   [topic value]
-  (let [encoded (encode (message-codec (:codec topic)) value)
+  (let [encoded (encode (:codec topic) value)
         topic (if (space? (get-buffer topic) encoded)
                 topic
                 (roll-over topic))]
@@ -90,5 +90,5 @@
      (let [topic (fs/file path topic)]
        (fs/mkdirs topic)
        (roll-over {:path topic
-                   :codec (compile-frame codec)
+                   :codec (message-codec codec)
                    :size size}))))
