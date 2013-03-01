@@ -8,18 +8,29 @@
             [flatland.cassette.codec :refer [message-codec]])
   (:import [java.io RandomAccessFile]))
 
-(defn grow-file [^RandomAccessFile file size]
-  ;; Should create a sparse file on Linux and Windows, but apparently not OS X (HFS+).
-  (.setLength file size))
+(defn grow-file
+  "Set the length of a random access file to n bytes. Should
+   have the effect of creating a sparse file on Linux and Windows,
+   but not OS X because HFS+ does not support this (apparently)."
+  [^RandomAccessFile file n]
+  (.setLength file n))
 
-(defn space? [buf buf-seq]
+(defn space?
+  "Check if buf has enough space to store the bytes from buf-seq in it."
+  [buf buf-seq]
   (>= (- (.capacity buf) (.position buf))
      (byte-count buf-seq)))
 
-(defn kafka-file [offset]
+(defn kafka-file
+  "Takes a byte offset and returns a kafka filename with a proper name for
+   that offset."
+  [offset]
   (format "%011d.kafka" offset))
 
-(defn compute-file-name 
+(defn compute-file-name
+  "Takes the byte offset where the current buffer stops and the name of the
+   currently open file and with this information determines the name of the
+   next file to roll over to."
   [byte-offset name]
   (kafka-file
    (if name
@@ -28,8 +39,9 @@
      0)))
 
 (defn roll-over
-  "Rolls over to a new file (or begins the topic if no files exist).
-   Closes the previous memory mapped file (if there was one)."
+  "If the topic has an open file already, rolls over to a new file and closes
+   the previous memory mapped file. If this topic has no currently open file,
+   creates the first one."
   [topic]
   (let [{:keys [path size handle name]} topic
         pos (when-let [buffer (:buffer handle)]
@@ -68,7 +80,11 @@
        (take-while (complement nil?) (lazy-decode-all codec buffer)))))
 
 (defn create
-  "Create a new log file."
+  "Create a new topic. path is the path where the topic will be created.
+   topic is the name of the topic and the directory where the files
+   associated with the topic will live. codec is the codec to encode
+   payloads as. You can optionally provide size which is the maximum
+   file size of each portion of the topic."
   ([path topic codec] (create path topic codec 524288000))
   ([path topic codec size]
      (let [topic (fs/file path topic)]
