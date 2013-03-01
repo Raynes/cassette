@@ -5,6 +5,7 @@
             [flatland.useful.map :refer [keyed]]
             [flatland.useful.io :refer [mmap-file]]
             [me.raynes.fs :as fs]
+            [flatland.cassette.util :refer [kafka-file]]
             [flatland.cassette.codec :refer [message-codec]])
   (:import [java.io RandomAccessFile]))
 
@@ -20,12 +21,6 @@
   [buf buf-seq]
   (>= (- (.capacity buf) (.position buf))
      (byte-count buf-seq)))
-
-(defn kafka-file
-  "Takes a byte offset and returns a kafka filename with a proper name for
-   that offset."
-  [offset]
-  (format "%011d.kafka" offset))
 
 (defn compute-file-name
   "Takes the byte offset where the current buffer stops and the name of the

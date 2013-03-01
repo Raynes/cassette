@@ -5,6 +5,7 @@
             [gloss.data.bytes.core :as bytes]
             [gloss.core.protocols :refer [Reader Writer read-bytes write-bytes]]
             [flatland.useful.io :refer [mmap-file]]
+            [flatland.cassette.util :as util]
             [me.raynes.fs :as fs])
   (:import java.util.zip.CRC32
            (java.nio ByteBuffer)
@@ -67,7 +68,7 @@
      (kafka-file {:path path} 99999999999))
   ([{:keys [path]} byte-offset]
      (let [files (.listFiles path)
-           expected-name (format "%011d.kafka" byte-offset)
+           expected-name (util/kafka-file byte-offset)
            acceptable-files (remove #(neg? (compare expected-name (.getName %)))
                                     files)]
        (Collections/max acceptable-files))))
