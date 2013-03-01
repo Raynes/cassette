@@ -94,7 +94,7 @@
 (defn read-messages [{codec :codec, {buffer :buffer} :handle, :as topic}]
   (lazy-seq
     (let [dup (.slice buffer)
-          {:keys [success value len]} (read-one (bytes/create-buf-seq [dup]) codec)]
+          {:keys [success value len]} (read-one (bytes/create-buf-seq dup) codec)]
       (when success
         (.position buffer (+ (.position buffer) len))
         (cons value (read-messages topic))))))
