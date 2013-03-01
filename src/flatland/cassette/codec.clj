@@ -29,7 +29,7 @@
                    (if (= crc (compute-crc bytes))
                      (io/decode codec bytes)
                      (throw (IllegalArgumentException.
-                             (format "CRC %l does not match: expected %l"
+                             (format "CRC %d does not match: expected %d"
                                      crc, (compute-crc bytes))))))))
 
 (let [magic-byte (byte 0)]
