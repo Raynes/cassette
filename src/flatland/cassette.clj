@@ -28,24 +28,23 @@
   "Rolls over to a new file (or begins the topic if no files exist).
    Closes the previous memory mapped file (if there was one)."
   [topic]
-  (let [{:keys [path size current]} topic
-        pos (when-let [buffer (get-in current [:handle :buffer])]
+  (let [{:keys [path size handle name]} topic
+        pos (when-let [buffer (:buffer handle)]
               (.position buffer))
-        name (compute-file-name pos (:name current))
+        name (compute-file-name pos name)
         handle (mmap-file
                 (doto (RandomAccessFile.
                        (fs/file path name)
                        "rw")
                   (grow-file size)))]
-    (when-let [closer (get-in current [:handle :close])]
+    (when-let [closer (:close handle)]
       (closer))
-    (assoc topic :current {:handle handle
-                           :name name})))
+    (assoc topic :handle handle :name name)))
 
 (defn get-buffer
   "Pull the raw memory mapped buffer out of a topic."
   [topic]
-  (get-in topic [:current :handle :buffer]))
+  (get-in topic [:handle :buffer]))
 
 (defn append-message!
   "Append a message to the topic."
