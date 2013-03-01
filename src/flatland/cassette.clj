@@ -51,8 +51,8 @@
 
 (defn append-message!
   "Append a message to the topic."
-  [topic frame value]
-  (let [encoded (encode (message-codec frame) value)
+  [topic value]
+  (let [encoded (encode (message-codec (:codec topic)) value)
         topic (if (space? (get-buffer topic) encoded)
                 topic
                 (roll-over topic))]
@@ -69,9 +69,10 @@
 
 (defn create
   "Create a new log file."
-  ([path topic] (create path topic 524288000))
-  ([path topic size]
+  ([path topic codec] (create path topic codec 524288000))
+  ([path topic codec size]
      (let [topic (fs/file path topic)]
        (fs/mkdirs topic)
        (roll-over {:path topic
+                   :codec (compile-frame codec)
                    :size size}))))
