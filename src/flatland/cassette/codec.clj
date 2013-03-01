@@ -91,7 +91,12 @@
     (.position buffer (- byte-offset first-offset))
     (read-one buffer codec)))
 
-(defn read-messages [{codec :codec, {buffer :buffer} :handle, :as topic}]
+(defn read-messages
+  "Returns a lazy sequence of messages in this topic's currently-open buffer. As messages are
+   consumed from the lazy sequence, the buffer's .position will be advanced past the message. Once
+   all messages are consumed, the buffer will be positioned immediately after the last valid
+   message, ready to write new messages."
+  [{codec :codec, {buffer :buffer} :handle, :as topic}]
   (lazy-seq
     (let [dup (.slice buffer)
           {:keys [success value len]} (read-one (bytes/create-buf-seq dup) codec)]
