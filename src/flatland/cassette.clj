@@ -16,13 +16,16 @@
   (>= (- (.capacity buf) (.position buf))
      (byte-count buf-seq)))
 
+(defn kafka-file [offset]
+  (format "%011d.kafka" offset))
+
 (defn compute-file-name 
   [byte-offset name]
-  (format "%011d.kafka"
-          (if name
-            (+ (Long/parseLong (fs/name name))
-               byte-offset)
-            0)))
+  (kafka-file
+   (if name
+     (+ (Long/parseLong (fs/name name))
+        byte-offset)
+     0)))
 
 (defn roll-over
   "Rolls over to a new file (or begins the topic if no files exist).
