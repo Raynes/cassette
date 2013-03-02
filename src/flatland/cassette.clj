@@ -105,16 +105,26 @@
            :codec (codec/message-codec codec)}
       (advance-buffer!))))
 
+(def default-size 524288000)
+
 (defn create
   "Create a new topic. path is the path where the topic will be created.
    topic is the name of the topic and the directory where the files
    associated with the topic will live. codec is the codec to encode
    payloads as. You can optionally provide size which is the maximum
    file size of each portion of the topic."
-  ([path topic codec] (create path topic codec 524288000))
+  ([path topic codec] (create path topic codec default-size))
   ([path topic codec size]
      (let [topic (fs/file path topic)]
        (fs/mkdirs topic)
        (roll-over {:path topic
                    :codec (codec/message-codec codec)
                    :size size}))))
+
+(defn create-or-open
+  "Creates or opens a new topic depending on whether or not it exists."
+  ([path topic codec] (create-or-open path topic codec default-size))
+  ([path topic codec size]
+     (if (fs/exists? (fs/file path topic))
+       (open path topic codec)
+       (create path topic codec size))))
