@@ -33,33 +33,27 @@
         byte-offset)
      0)))
 
-(defn close
-  "Closes the file associated with a topic."
-  [topic]
-  (when-let [closer (get-in topic [:handle :close])]
-    (closer)))
-
 (defn mmap
   "Memory map a file. If size is passed, grow the file to that size
    first."
   [name & [size]]
-  (let [file (RandomAccessFile. name "rw")]
-    (mmap-file (if size
-                 (doto file (grow-file size))
-                 file))))
+  (let [file (RandomAccessFile. name "rw")
+        mapped (mmap-file (if size
+                            (doto file (grow-file size))
+                            file))]
+    ((:close mapped))
+    mapped))
 
 (defn roll-over
-  "If the topic has an open file already, rolls over to a new file and closes
-   the previous memory mapped file. If this topic has no currently open file,
-   creates the first one."
+  "If the topic has an open file already and rolls over to a new file.
+   If this topic has no currently open file, creates the first one."
   [topic]
   (let [{:keys [path size handle name]} topic
         pos (when-let [buffer (:buffer handle)]
               (.position buffer))
         name (compute-file-name pos name)
         handle (mmap (fs/file path name) size)]
-    (doto (assoc topic :handle handle :name name)
-      (close))))
+    (assoc topic :handle handle :name name)))
 
 (defn get-buffer
   "Pull the raw memory mapped buffer out of a topic."
