@@ -5,6 +5,7 @@
             [gloss.data.bytes.core :as bytes]
             [gloss.core.protocols :refer [Reader Writer read-bytes write-bytes]]
             [flatland.useful.io :refer [mmap-file]]
+            [flatland.useful.fn :refer [to-fix !]]
             [flatland.cassette.util :as util]
             [me.raynes.fs :as fs])
   (:import java.util.zip.CRC32
@@ -58,10 +59,11 @@
     (compile-frame (minimum-size-finite-frame 5 :uint32 [:byte (wrap-crc codec)])
                    (fn add [val]
                      [magic-byte val])
-                   (fn check [[magic val]]
-                     (if (= magic magic-byte)
-                       val
-                       ::invalid)))))
+                   (to-fix (! #{::invalid})
+                           (fn check [[magic val]]
+                             (if (= magic magic-byte)
+                               val
+                               ::invalid))))))
 
 (defn kafka-file
   ([{:keys [path]}]
