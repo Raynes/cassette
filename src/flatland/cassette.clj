@@ -102,7 +102,7 @@
            :size (.capacity buffer)
            :handle {:buffer buffer
                     :close close}
-           :codec (message-codec codec)}
+           :codec (codec/message-codec codec)}
       (advance-buffer!))))
 
 (defn create
