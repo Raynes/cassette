@@ -113,7 +113,7 @@
        (fs/mkdirs topic)
        (roll-over {:path topic
                    :codec (codec/message-codec codec)
-                   :size size}))))
+                   :size (or size default-size)}))))
 
 (defn create-or-open
   "Creates or opens a new topic depending on whether or not it exists."
