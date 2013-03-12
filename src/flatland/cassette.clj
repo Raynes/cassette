@@ -84,6 +84,25 @@
                                                              (.duplicate)
                                                              (.position 0)))))
 
+(defn- coll-subseq
+  "Colls should be a descending sequence of ascending sequences, like ((10 11 12) (5 6 8) (1 2 4)).
+   Returns all items for which (pred x) is true, assuming (and (pred x) (< x y)) implies (pred y)."
+  [pred colls]
+  (loop [candidates (), colls colls]
+    (if-let [[coll & colls] (seq colls)]
+      (if (when-let [x (first coll)]
+            (pred x))
+        (recur (conj candidates coll) colls)
+        (apply concat (drop-while (complement pred) coll)
+               candidates))
+      (apply concat candidates))))
+
+(defn messages-since [topic pred]
+  (let [files (sort (comp - compare) (.listFiles (:path topic)))
+        decoded-values (for [file files]
+                         (read-messages (assoc topic :handle (mmap file))))]
+    (coll-subseq pred decoded-values)))
+
 (defn open
   "Opens an existing topic directory for writing. Path is where
    the topics are stored and topic is the topic name itself. A
