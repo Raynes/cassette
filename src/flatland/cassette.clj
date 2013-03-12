@@ -20,7 +20,7 @@
   "Check if buf has enough space to store the bytes from buf-seq in it."
   [buf buf-seq]
   (>= (- (.capacity buf) (.position buf))
-     (byte-count buf-seq)))
+      (byte-count buf-seq)))
 
 (defn compute-file-name
   "Takes the byte offset where the current buffer stops and the name of the
