@@ -4,6 +4,7 @@
             [gloss.io :refer [lazy-decode-all encode]]
             [flatland.useful.map :refer [keyed]]
             [flatland.useful.io :refer [mmap-file]]
+            [flatland.useful.fn :refer [fix]]
             [me.raynes.fs :as fs]
             [flatland.cassette.util :refer [kafka-file]]
             [flatland.cassette.codec :as codec])
@@ -62,27 +63,30 @@
 
 (defn append-message!
   "Append a message to the topic."
-  [topic value]
-  (let [encoded (encode (:codec topic) value)
-        topic (if (space? (get-buffer topic) encoded)
-                topic
-                (roll-over topic))]
+  [handle value]
+  (let [encoded (encode (:codec @handle) value)
+        buffer (get-buffer (swap! handle
+                                  fix #(not (space? (get-buffer %) encoded))
+                                  roll-over))]
     (doseq [buf encoded]
-      (.put (get-buffer topic) buf))
-    topic))
+      (.put buffer buf))
+    handle))
 
 (defn advance-buffer!
   "Advance the topic's buffer to after the last written message. This is
    useful for positioning the buffer so that writes go to the end."
-  [topic]
-  (dorun (codec/read-messages topic)))
+  [handle]
+  (dorun (codec/read-messages @handle)))
 
-(defn read-messages
-  "Returns a lazy sequence of messages in this topic's currently open buffer."
-  [topic]
+(defn read-messages* [topic]
   (codec/read-messages (update-in topic [:handle :buffer] #(doto %
                                                              (.duplicate)
                                                              (.position 0)))))
+
+(defn read-messages
+  "Returns a lazy sequence of messages in this topic's currently open buffer."
+  [handle]
+  (read-messages* @handle))
 
 (defn- coll-subseq
   "Colls should be a descending sequence of ascending sequences, like ((10 11 12) (5 6 8) (1 2 4)).
@@ -97,10 +101,11 @@
                candidates))
       (apply concat candidates))))
 
-(defn messages-since [topic pred]
-  (let [files (sort (comp - compare) (.listFiles (:path topic)))
+(defn messages-since [handle pred]
+  (let [topic @handle
+        files (sort (comp - compare) (.listFiles (:path topic)))
         decoded-values (for [file files]
-                         (read-messages (assoc topic :handle (mmap file))))]
+                         (read-messages* (assoc topic :handle (mmap file))))]
     (coll-subseq pred decoded-values)))
 
 (defn open
@@ -111,11 +116,11 @@
   [path topic codec]
   (let [topic-dir (fs/file path topic)
         {:keys [buffer close]} (mmap (codec/kafka-file {:path topic-dir}))]
-    (doto {:path topic-dir
-           :size (.capacity buffer)
-           :handle {:buffer buffer
-                    :close close}
-           :codec (codec/message-codec codec)}
+    (doto (atom {:path topic-dir
+                 :size (.capacity buffer)
+                 :handle {:buffer buffer
+                          :close close}
+                 :codec (codec/message-codec codec)})
       (advance-buffer!))))
 
 (def default-size 524288000)
@@ -130,9 +135,9 @@
   ([path topic codec size]
      (let [topic (fs/file path topic)]
        (fs/mkdirs topic)
-       (roll-over {:path topic
-                   :codec (codec/message-codec codec)
-                   :size (or size default-size)}))))
+       (atom (roll-over {:path topic
+                         :codec (codec/message-codec codec)
+                         :size (or size default-size)})))))
 
 (defn create-or-open
   "Creates or opens a new topic depending on whether or not it exists."
