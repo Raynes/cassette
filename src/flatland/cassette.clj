@@ -109,13 +109,11 @@
     (coll-subseq pred decoded-values)))
 
 (defn open
-  "Opens an existing topic directory for writing. Path is where
-   the topics are stored and topic is the topic name itself. A
-   topic map with a pre-advanced buffer will be returned and be
+  "Opens an existing topic directory for writing. A
+   topic handle with a pre-advanced buffer will be returned and be
    immediately writable."
-  [path topic codec]
-  (let [topic-dir (fs/file path topic)
-        {:keys [buffer close]} (mmap (codec/kafka-file {:path topic-dir}))]
+  [topic-dir codec]
+  (let [{:keys [buffer close]} (mmap (codec/kafka-file {:path topic-dir}))]
     (doto (atom {:path topic-dir
                  :size (.capacity buffer)
                  :handle {:buffer buffer
@@ -126,23 +124,20 @@
 (def default-size 524288000)
 
 (defn create
-  "Create a new topic. path is the path where the topic will be created.
-   topic is the name of the topic and the directory where the files
-   associated with the topic will live. codec is the codec to encode
+  "Create a new topic. codec is the codec to encode
    payloads as. You can optionally provide size which is the maximum
    file size of each portion of the topic."
-  ([path topic codec] (create path topic codec default-size))
-  ([path topic codec size]
-     (let [topic (fs/file path topic)]
-       (fs/mkdirs topic)
-       (atom (roll-over {:path topic
-                         :codec (codec/message-codec codec)
-                         :size (or size default-size)})))))
+  ([topic-dir codec] (create topic-dir default-size))
+  ([topic-dir codec size]
+     (fs/mkdirs topic-dir)
+     (atom (roll-over {:path topic-dir
+                       :codec (codec/message-codec codec)
+                       :size (or size default-size)}))))
 
 (defn create-or-open
   "Creates or opens a new topic depending on whether or not it exists."
-  ([path topic codec] (create-or-open path topic codec default-size))
-  ([path topic codec size]
-     (if (fs/exists? (fs/file path topic))
-       (open path topic codec)
-       (create path topic codec size))))
+  ([topic-dir codec] (create-or-open topic-dir codec default-size))
+  ([topic-dir codec size]
+     (if (fs/exists? topic-dir)
+       (open topic-dir codec)
+       (create topic-dir codec size))))
