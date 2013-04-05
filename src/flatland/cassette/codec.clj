@@ -10,7 +10,7 @@
             [me.raynes.fs :as fs])
   (:import java.util.zip.CRC32
            (java.nio ByteBuffer)
-           (java.io StringReader)
+           (java.io StringReader File)
            (java.util Collections Scanner)))
 
 (defn minimum-size-finite-frame
@@ -68,10 +68,10 @@
 (defn kafka-file
   ([{:keys [path]}]
      (kafka-file {:path path} 99999999999))
-  ([{:keys [path]} byte-offset]
+  ([{:keys [^File path]} byte-offset]
      (let [files (.listFiles path)
            expected-name (util/kafka-file byte-offset)
-           acceptable-files (remove #(neg? (compare expected-name (.getName %)))
+           acceptable-files (remove #(neg? (compare expected-name (.getName ^File %)))
                                     files)]
        (Collections/max acceptable-files))))
 
@@ -99,7 +99,7 @@
    consumed from the lazy sequence, the buffer's .position will be advanced past the message. Once
    all messages are consumed, the buffer will be positioned immediately after the last valid
    message, ready to write new messages."
-  [{codec :codec, {buffer :buffer} :handle, :as topic}]
+  [{codec :codec, {^ByteBuffer buffer :buffer} :handle, :as topic}]
   (lazy-seq
     (let [dup (.slice buffer)
           {:keys [success value len]} (read-one (bytes/create-buf-seq dup) codec)]

@@ -8,7 +8,8 @@
             [me.raynes.fs :as fs]
             [flatland.cassette.util :refer [kafka-file]]
             [flatland.cassette.codec :as codec])
-  (:import [java.io RandomAccessFile]))
+  (:import [java.io RandomAccessFile File]
+           (java.nio ByteBuffer)))
 
 (defn grow-file
   "Set the length of a random access file to n bytes. Should
@@ -19,7 +20,7 @@
 
 (defn space?
   "Check if buf has enough space to store the bytes from buf-seq in it."
-  [buf buf-seq]
+  [^ByteBuffer buf buf-seq]
   (>= (- (.capacity buf) (.position buf))
       (byte-count buf-seq)))
 
@@ -50,7 +51,7 @@
    If this topic has no currently open file, creates the first one."
   [topic]
   (let [{:keys [path size handle name]} topic
-        pos (when-let [buffer (:buffer handle)]
+        pos (when-let [^ByteBuffer buffer (:buffer handle)]
               (.position buffer))
         name (compute-file-name pos name)
         handle (mmap (fs/file path name) size)]
@@ -65,10 +66,10 @@
   "Append a message to the topic."
   [handle value]
   (let [encoded (encode (:codec @handle) value)
-        buffer (get-buffer (swap! handle
-                                  fix #(not (space? (get-buffer %) encoded))
-                                  roll-over))]
-    (doseq [buf encoded]
+        ^ByteBuffer buffer (get-buffer (swap! handle
+                                              fix #(not (space? (get-buffer %) encoded))
+                                              roll-over))]
+    (doseq [^ByteBuffer buf encoded]
       (.put buffer buf))
     handle))
 
@@ -79,7 +80,7 @@
   (dorun (codec/read-messages @handle)))
 
 (defn read-messages* [topic]
-  (codec/read-messages (update-in topic [:handle :buffer] #(doto %
+  (codec/read-messages (update-in topic [:handle :buffer] #(doto ^ByteBuffer %
                                                              (.duplicate)
                                                              (.position 0)))))
 
@@ -103,7 +104,7 @@
 
 (defn messages-since [handle pred]
   (let [topic @handle
-        files (sort (comp - compare) (.listFiles (:path topic)))
+        files (sort (comp - compare) (.listFiles ^File (:path topic)))
         decoded-values (for [file files]
                          (read-messages* (assoc topic :handle (mmap file))))]
     (coll-subseq pred decoded-values)))
@@ -113,7 +114,7 @@
    topic handle with a pre-advanced buffer will be returned and be
    immediately writable."
   [topic-dir codec]
-  (let [{:keys [buffer close]} (mmap (codec/kafka-file {:path topic-dir}))]
+  (let [{:keys [^ByteBuffer buffer close]} (mmap (codec/kafka-file {:path topic-dir}))]
     (doto (atom {:path topic-dir
                  :size (.capacity buffer)
                  :handle {:buffer buffer
