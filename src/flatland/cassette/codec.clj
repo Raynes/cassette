@@ -59,11 +59,11 @@
     (compile-frame (minimum-size-finite-frame 5 :uint32 [:byte (wrap-crc codec)])
                    (fn add [val]
                      [magic-byte val])
-                   (to-fix (! #{::invalid})
-                           (fn check [[magic val]]
-                             (if (= magic magic-byte)
-                               val
-                               ::invalid))))))
+                   (fn [x]
+                     (if (or (= x ::invalid)
+                             (not= (first x) magic-byte))
+                       ::invalid
+                       (second x))))))
 
 (defn kafka-file
   ([{:keys [path]}]
