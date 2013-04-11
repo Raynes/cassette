@@ -39,7 +39,7 @@
   "Memory map a file. If size is passed, grow the file to that size
    first."
   [name & [size]]
-  (let [file (RandomAccessFile. name "rw")
+  (let [file (RandomAccessFile. (fs/file name) "rw")
         mapped (mmap-file (if size
                             (doto file (grow-file size))
                             file))]
