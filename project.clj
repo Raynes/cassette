@@ -1,4 +1,4 @@
-(defproject org.flatland/cassette "0.2.3"
+(defproject org.flatland/cassette "0.2.4"
   :description "A Clojure implementation of the Kafka file format."
   :url "https://github.com/flatland/cassette"
   :license {:name "Eclipse Public License"
