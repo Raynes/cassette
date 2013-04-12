@@ -113,14 +113,17 @@
   "Opens an existing topic directory for writing. A
    topic handle with a pre-advanced buffer will be returned and be
    immediately writable."
-  [topic-dir codec]
-  (let [{:keys [^ByteBuffer buffer close]} (mmap (codec/kafka-file {:path topic-dir}))]
-    (doto (atom {:path topic-dir
-                 :size (.capacity buffer)
-                 :handle {:buffer buffer
-                          :close close}
-                 :codec (codec/message-codec codec)})
-      (advance-buffer!))))
+  ([topic-dir codec]
+     (open topic-dir codec true))
+  ([topic-dir codec advance?]
+     (let [{:keys [^ByteBuffer buffer close]} (mmap (codec/kafka-file {:path topic-dir}))
+           handle (atom {:path topic-dir
+                         :size (.capacity buffer)
+                         :handle {:buffer buffer
+                                  :close close}
+                         :codec (codec/message-codec codec)})]
+       (when advance? (advance-buffer! handle))
+       handle)))
 
 (def default-size 524288000)
 
