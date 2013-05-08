@@ -116,8 +116,10 @@
   ([topic-dir codec]
      (open topic-dir codec true))
   ([topic-dir codec advance?]
-     (let [{:keys [^ByteBuffer buffer close]} (mmap (codec/kafka-file {:path topic-dir}))
+     (let [kf (codec/kafka-file {:path topic-dir})
+           {:keys [^ByteBuffer buffer close]} (mmap kf)
            handle (atom {:path topic-dir
+                         :name kf
                          :size (.capacity buffer)
                          :handle {:buffer buffer
                                   :close close}
