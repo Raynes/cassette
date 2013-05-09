@@ -47,8 +47,8 @@
     mapped))
 
 (defn roll-over
-  "If the topic has an open file already and rolls over to a new file.
-   If this topic has no currently open file, creates the first one."
+  "If the topic has an open file already, roll over to a new file.
+   If the topic has no currently open file, create the first one."
   [topic]
   (let [{:keys [path size handle name]} topic
         pos (when-let [^ByteBuffer buffer (:buffer handle)]
